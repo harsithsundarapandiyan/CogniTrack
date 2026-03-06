@@ -11,22 +11,25 @@ st.markdown("[Example1: test_cognitive.txt](test_cognitive.txt)")
 # Load example dataset automatically
 data = pd.read_csv("test_cognitive.txt", sep="\t")
 
+# Normalize column names (remove spaces, lowercase)
+data.columns = data.columns.str.strip().str.replace(" ", "").str.lower()
+
 st.subheader("Dataset Preview")
 st.write(data.head())
 
 # Extract variables
-posture = data["posture_angle"]
-mouse = data["mouse_latency"]
-memory = data["memory_score"]
-co2 = data["co2"]
+posture = data["postureangle"]
+mouse = data["mouseinteraction"]
+memory = data["memorytest"]
+co2 = data["co2level"]
 
 # Normalize values
 posture_norm = (posture - posture.min()) / (posture.max() - posture.min())
-mouse_norm = (mouse - mouse.min()) / (mouse.max() - mouse.min())
-memory_norm = 1 - ((memory - memory.min()) / (memory.max() - memory.min()))
+mouse_norm = 1 - (mouse - mouse.min()) / (mouse.max() - mouse.min())  # assume higher mouse = better
+memory_norm = 1 - (memory - memory.min()) / (memory.max() - memory.min())  # higher memory = better
 co2_norm = (co2 - co2.min()) / (co2.max() - co2.min())
 
-# Linear regression inspired fatigue score (weighted combination)
+# Linear combination fatigue score (equal weights)
 fatigue_score = (
     0.25 * posture_norm +
     0.25 * mouse_norm +
@@ -36,28 +39,25 @@ fatigue_score = (
 
 data["fatigue_score"] = fatigue_score
 
-st.subheader("Fatigue Score")
+st.subheader("Fatigue Score Over Time")
 st.line_chart(data["fatigue_score"])
 
-# CO2 Alert System
+# CO2 Alert System (Harvard ranges)
 st.subheader("CO₂ Air Quality Alert")
-
 latest_co2 = co2.iloc[-1]
-
 st.write(f"Current CO₂ Level: **{latest_co2} ppm**")
 
-if latest_co2 < 800:
+if latest_co2 <= 600:
     st.success("Air quality is good.")
-elif latest_co2 < 1000:
+elif latest_co2 <= 1000:
     st.warning("CO₂ slightly elevated. Monitor ventilation.")
-elif latest_co2 < 1500:
+elif latest_co2 <= 1500:
     st.warning("CO₂ high. Check CO₂ levels and improve ventilation.")
 else:
     st.error("CO₂ very high. Immediate ventilation recommended.")
 
-# Plot posture
+# Plot Posture Angle
 st.subheader("Posture Angle Over Time")
-
 plt.figure()
 plt.plot(posture)
 plt.xlabel("Time")
@@ -65,29 +65,26 @@ plt.ylabel("Posture Angle")
 plt.title("Spine Posture Angle Changes")
 st.pyplot(plt)
 
-# Mouse latency plot
-st.subheader("Mouse Click Latency")
-
+# Plot Mouse Interaction
+st.subheader("Mouse Interaction Over Time")
 plt.figure()
 plt.plot(mouse)
 plt.xlabel("Time")
-plt.ylabel("Latency")
-plt.title("Mouse Click Latency Variation")
+plt.ylabel("Mouse Interaction Score")
+plt.title("Mouse Interaction Variation")
 st.pyplot(plt)
 
-# Memory score plot
+# Plot Memory Score
 st.subheader("Memory Test Score")
-
 plt.figure()
 plt.plot(memory)
 plt.xlabel("Time")
-plt.ylabel("Memory Score")
-plt.title("Memory Performance")
+plt.ylabel("Memory Test Score")
+plt.title("Memory Performance Over Time")
 st.pyplot(plt)
 
-# CO2 plot
+# Plot CO2 Levels
 st.subheader("CO₂ Levels")
-
 plt.figure()
 plt.plot(co2)
 plt.xlabel("Time")
@@ -95,9 +92,8 @@ plt.ylabel("CO₂ ppm")
 plt.title("CO₂ Levels vs Cognitive Performance")
 st.pyplot(plt)
 
-# Combined fatigue visualization
-st.subheader("Combined Fatigue Indicators")
-
+# Combined Fatigue Visualization
+st.subheader("Integrated Fatigue Score")
 plt.figure()
 plt.plot(data["fatigue_score"])
 plt.xlabel("Time")
