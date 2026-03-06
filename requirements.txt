@@ -4,3 +4,4 @@ numpy
 opencv-python-headless
 matplotlib
 scikit-learn
+requests 
