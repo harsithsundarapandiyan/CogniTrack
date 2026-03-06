@@ -5,7 +5,7 @@ import serial
 import time
 
 # SERIAL PORT (CHANGE IF NEEDED)
-esp = serial.Serial("COM3",115200,timeout=1)
+esp = serial.Serial("COM5",115200,timeout=1)
 time.sleep(2)
 
 # Page setup
