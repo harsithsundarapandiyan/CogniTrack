@@ -10,24 +10,24 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("CogniTrack – Cognitive Fatigue Monitoring Dashboard")
+st.markdown(
+"""
+<div style="background-color:#001f4d;color:white;padding:20px;text-align:center;border-radius:8px;">
+<h1>🧠 CogniTrack – Cognitive Fatigue Tracker</h1>
+</div>
+""",
+unsafe_allow_html=True
+)
 
-# --- Load example dataset ---
-st.subheader("Example Dataset")
-st.markdown("[Example1: test_cognitive.txt](test_cognitive.txt)")
-
-# Load CSV
-data = pd.read_csv("test_cognitive.txt", sep="\t")
-
-# Normalize columns (remove spaces, lowercase)
-data.columns = data.columns.str.strip().str.lower().str.replace(" ", "")
-
-# Show preview
-st.subheader("Dataset Preview")
-st.write(data.head())
+# --- Initialize history ---
+if "history" not in st.session_state:
+    st.session_state.history = pd.DataFrame(
+        columns=["PostureAngle","MouseInteraction","MemoryTest","CO2Level",
+                 "Temperature","Humidity","FatigueScore","Timestamp"]
+    )
 
 # ----------------------------
-# Fatigue calculation functions
+# Functions
 # ----------------------------
 def normalize(value, min_val, max_val):
     return min(max((value - min_val) / (max_val - min_val), 0), 1)
@@ -68,9 +68,6 @@ def calculate_fatigue(posture, mouse, memory, co2, temp, hum):
     aq = air_quality_score(co2, temp, hum)
     return round((0.30*p + 0.25*m + 0.25*mem + 0.20*aq)*100,2)
 
-# ----------------------------
-# Plotly Gauge
-# ----------------------------
 def show_fatigue_gauge(fatigue_score):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -90,24 +87,39 @@ def show_fatigue_gauge(fatigue_score):
     st.plotly_chart(fig, use_container_width=True)
 
 # ----------------------------
+# Manual Inputs
+# ----------------------------
+st.subheader("Manual Input")
+col1,col2,col3 = st.columns(3)
+posture = col1.number_input("Posture Angle (°)",0.0,90.0,40.0)
+mouse = col2.number_input("Mouse Interaction Score",0.0,100.0,20.0)
+memory = col3.number_input("Memory Test Score",0.0,100.0,90.0)
+
+col4,col5,col6 = st.columns(3)
+co2 = col4.number_input("CO₂ Level (ppm)",300.0,5000.0,500.0)
+temp = col5.number_input("Temperature (°C)",15.0,35.0,22.0)
+humidity = col6.number_input("Humidity (%)",20.0,80.0,50.0)
+
+# ----------------------------
 # Button to calculate fatigue
 # ----------------------------
-st.subheader("Calculate Fatigue from Latest Entry")
 if st.button("Calculate Fatigue Score"):
-
-    posture = data["postureangle"].iloc[-1]
-    mouse = data["mouseinteraction"].iloc[-1]
-    memory = data["memorytest"].iloc[-1]
-    co2 = data["co2level"].iloc[-1]
-    temp = data["temperature"].iloc[-1]
-    hum = data["humidity"].iloc[-1]
-
-    fatigue_score = calculate_fatigue(posture, mouse, memory, co2, temp, hum)
+    fatigue_score = calculate_fatigue(posture, mouse, memory, co2, temp, humidity)
+    st.session_state.history = pd.concat([st.session_state.history, pd.DataFrame([{
+        "PostureAngle":posture,
+        "MouseInteraction":mouse,
+        "MemoryTest":memory,
+        "CO2Level":co2,
+        "Temperature":temp,
+        "Humidity":humidity,
+        "FatigueScore":fatigue_score,
+        "Timestamp":datetime.now()
+    }])], ignore_index=True)
 
     st.write(f"**Latest Fatigue Score: {fatigue_score}**")
     show_fatigue_gauge(fatigue_score)
 
-    # --- Individual Alerts ---
+    # Individual Alerts
     if posture > 40:
         st.warning("🪑 Posture Alert: Strong slouch detected")
     elif posture > 20:
@@ -133,7 +145,7 @@ if st.button("Calculate Fatigue Score"):
     else:
         st.error("🌿 Air Quality: Very Poor")
 
-    # --- High Fatigue Alert ---
+    # High Fatigue Alert
     if fatigue_score > 70:
         st.error(f"🚨 HIGH FATIGUE DETECTED: {fatigue_score} – TAKE A BREAK IMMEDIATELY!!")
         st.markdown(
@@ -147,13 +159,39 @@ if st.button("Calculate Fatigue Score"):
         )
 
 # ----------------------------
+# Example1 Button
+# ----------------------------
+st.subheader("Load Example Data")
+if st.button("Example1 – test_cognitive.txt"):
+    df = pd.DataFrame({
+        "PostureAngle":[40,55,70,85],
+        "MouseInteraction":[60,45,30,20],
+        "MemoryTest":[70,60,50,40],
+        "CO2Level":[500,800,1200,1500],
+        "Temperature":[25,26,27,28],
+        "Humidity":[50,55,60,65]
+    })
+    df["FatigueScore"] = df.apply(
+        lambda r: calculate_fatigue(
+            r["PostureAngle"],
+            r["MouseInteraction"],
+            r["MemoryTest"],
+            r["CO2Level"],
+            r["Temperature"],
+            r["Humidity"]
+        ), axis=1
+    )
+    df["Timestamp"] = datetime.now()
+    st.session_state.history = pd.concat([st.session_state.history, df], ignore_index=True)
+    last_score = df.iloc[-1]["FatigueScore"]
+    show_fatigue_gauge(last_score)
+
+# ----------------------------
 # Display history
 # ----------------------------
-st.subheader("Fatigue Score History")
-data["fatigue_score"] = data.apply(
-    lambda r: calculate_fatigue(
-        r["postureangle"], r["mouseinteraction"], r["memorytest"],
-        r["co2level"], r["temperature"], r["humidity"]
-    ), axis=1
-)
-st.line_chart(data["fatigue_score"])
+if not st.session_state.history.empty:
+    st.subheader("Fatigue Score History")
+    st.write(st.session_state.history)
+
+    st.subheader("Fatigue Score Over Time")
+    st.line_chart(st.session_state.history[["Timestamp","FatigueScore"]].set_index("Timestamp"))
