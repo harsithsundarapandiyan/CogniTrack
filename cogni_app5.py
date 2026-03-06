@@ -93,7 +93,7 @@ st.subheader("Manual Input")
 col1,col2,col3 = st.columns(3)
 posture = col1.number_input("Posture Angle (°)",0.0,90.0,40.0)
 mouse = col2.number_input("Mouse Interaction Score",0.0,100.0,20.0)
-memory = col3.number_input("Memory Test Score",0.0,100.0,90.0)
+memory = col3.number_input("Memory Test Score",0.0,100.0,30.0)
 
 col4,col5,col6 = st.columns(3)
 co2 = col4.number_input("CO₂ Level (ppm)",300.0,5000.0,500.0)
