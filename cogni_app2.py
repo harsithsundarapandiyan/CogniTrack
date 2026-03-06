@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import requests
+import serial
+import time
 
-# ESP32 ALERT URL
-ESP32_IP = "http://192.168.1.90/alert"
+# SERIAL PORT (CHANGE IF NEEDED)
+esp = serial.Serial("COM3",115200,timeout=1)
+time.sleep(2)
 
 # Page setup
 st.set_page_config(
@@ -13,21 +15,21 @@ st.set_page_config(
     layout="centered"
 )
 
-# Header
 st.markdown("""
 <div style='background-color:#001f4d;padding:20px;border-radius:10px'>
 <h1 style='color:white;text-align:center'>🧠 CogniTrack – Cognitive Fatigue Tracker</h1>
 </div>
 """, unsafe_allow_html=True)
 
-# Session history
+# History
 if "history" not in st.session_state:
     st.session_state.history = pd.DataFrame(
         columns=["PostureAngle","MouseInteraction","MemoryTest","CO2Level","Temperature","Humidity","FatigueScore","Timestamp"]
     )
 
-# Scoring functions
+# Score functions
 def factor_score(value, thresholds):
+
     if value <= thresholds[0]:
         return 0
     elif value <= thresholds[1]:
@@ -97,23 +99,26 @@ if st.button("Calculate Fatigue Score"):
     )
 
     if fatigue_score<=33:
+
         st.success(f"🟢 Low Fatigue: {fatigue_score}")
 
     elif fatigue_score<=66:
+
         st.warning(f"🟡 Moderate Fatigue: {fatigue_score}")
 
     else:
 
         st.error(f"🔴 High Fatigue: {fatigue_score}")
 
-        # Trigger ESP32
+        # SEND SIGNAL TO ESP32
         try:
-            requests.get(ESP32_IP)
+            esp.write(b"alert\n")
             st.warning("🚨 ESP32 ALERT TRIGGERED")
-        except:
-            st.warning("ESP32 not reachable")
 
-# History
+        except:
+            st.warning("ESP32 not connected")
+
+# History display
 if not st.session_state.history.empty:
 
     st.subheader("Fatigue History")
